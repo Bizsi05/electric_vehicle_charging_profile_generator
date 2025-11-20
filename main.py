@@ -40,7 +40,7 @@ def plot_gmm_marginal(gmm: GaussianMixture, dim=0,
     if dim == 0:
         data = data / 3600.0  # másodperc -> óra
 
-    # 2) hisztogram – density=True, így kb. sűrűségfüggvény
+    # 2) hisztogram – density=True, így kb. sűrűségfüggvény, false akkor darabszám lesz
     plt.figure(figsize=(6, 4))
     plt.hist(data, bins=60, density=False, alpha=0.7)
     plt.xlabel(xlabel)
