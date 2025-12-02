@@ -1,70 +1,82 @@
-import numpy as np
+import matplotlib.pyplot as plt
 
 from data_loading import load_gmms
 from plotting import plot_gmm_marginal
-
-#gmms[f'{day}_{segment}_{driver_group}'] = pickle.load(f)
-
-def sample_gmms(gmms, n_samples=10):
-    samples = {}
-    for key, gmm in gmms.items():
-        print(gmm.n_components)
-        if gmm.n_components==1:
-            #print(gmm.weights_[0])
-            gmm.weights_[0] = 1.
-        X, _ = gmm.sample(n_samples)
-        samples[key] = X
-    #print(samples)
-    return samples
-
-def regroup_samples_by_segment(samples):
-    regrouped = {}
-    for key, data in samples.items():
-        # key formátum: '{day}_{segment}_{driver_group}'
-        parts = key.split('_')
-        day = parts[0]
-        segment = parts[1]
-        driver_group = parts[2]
-        if day=='weekday':
-            seg_key = f'{segment}'
-            if seg_key not in regrouped:
-                regrouped[seg_key] = []
-            regrouped[seg_key].append(data)
-
-    # Összefűzés
-    for key, data in regrouped.items():
-        print(len(regrouped[key]))
-        print(key)
-        regrouped[key] = np.vstack(regrouped[key])
-
-    return regrouped
-
+from new_samples import (
+    sample_gmms,
+    regroup_samples_by_segment,
+    samples_to_profile,
+    convert_sample_to_triple,
+)
 
 
 def main():
     gmms = load_gmms()
 
-    # Példa: 1. driver group, home, weekday
+    # --- Példa: 1. driver group, home, weekday – marginal ábrák ---
     key = "weekday_home_1"
     gmm = gmms[key]
 
-    # Start time eloszlás (óra)
-    plot_gmm_marginal(gmm,
-                      dim=0,
-                      title=f"{key} – start time",
-                      xlabel="Start time [h]")
+    plot_gmm_marginal(
+        gmm,
+        dim=0,
+        title=f"{key} – start time",
+        xlabel="Start time [h]",
+    )
 
-    # Energia eloszlás (kWh)
-    plot_gmm_marginal(gmm,
-                      dim=1,
-                      title=f"{key} – energy",
-                      xlabel="Energy [kWh]")
+    plot_gmm_marginal(
+        gmm,
+        dim=1,
+        title=f"{key} – energy",
+        xlabel="Energy [kWh]",
+    )
 
-    #sample_gmms(gmms, 50)
-    regroup_samples_by_segment(sample_gmms(gmms, 50))
+    # Mintavétel + szegmensenkénti összefésülés
+    samples = sample_gmms(gmms, n_samples=50)
+    samples_by_segment = regroup_samples_by_segment(samples)
+
+    #Minta -> töltési időfüggvény
+    dt_minutes = 60      # órás felbontás
+    duration_h = 2.0     # feltételezzük, hogy mindenki 2 órát tölt
+
+    profiles = {}
+    triples_by_segment = {}
+
+    for segment, seg_samples in samples_by_segment.items():
+        t_grid, profile, triples = samples_to_profile(
+            seg_samples,
+            dt_minutes=dt_minutes,
+            duration_h=duration_h,
+        )
+        profiles[segment] = (t_grid, profile)
+        triples_by_segment[segment] = triples
+
+    # konkrét 3 adatos minta
+    example_segment = "home"
+    example_sample = samples_by_segment[example_segment][0]
+    ex_start_idx, ex_duration_steps, ex_level_kw, _ = convert_sample_to_triple(
+        example_sample,
+        dt_minutes=dt_minutes,
+        duration_h=duration_h,
+    )
+    print(f"Példa minta ({example_segment}):")
+    print("  raw sample (start_sec, energy_kWh):", example_sample)
+    print("  triple (start_idx, duration_steps, level_kw):",
+          (ex_start_idx, ex_duration_steps, ex_level_kw))
+
+    # --- Szegmensprofilok kirajzolása ---
+    plt.figure(figsize=(10, 5))
+    for segment, (t_grid, profile) in profiles.items():
+        plt.plot(t_grid, profile, label=segment)
+
+    plt.xlabel("Óra")
+    plt.ylabel("Összteljesítmény [kW]")
+    plt.title("Weekday – szegmensenkénti töltési profil")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == "__main__":
     main()
-
-
