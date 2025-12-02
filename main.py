@@ -1,53 +1,44 @@
-import pickle
-from os.path import join, exists
-
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.mixture import GaussianMixture
 
-def load_gmms():
-    gmms = {}
-    root = r'C:/Users/Dell/Documents/Egyetem/Msc/Önlab 2/SPEECh Model for Study on Grid Impacts of Charging Infrastructure Access/SPEECh Model for Study on Grid Impacts of Charging Infrastructure Access/ChargingModelData/GMMs'
+from data_loading import load_gmms
+from plotting import plot_gmm_marginal
 
-    for driver_group in range(1, 137):
-        for segment in ["home", "mud", "public", "work"]:
-            for day in ["weekday", "weekend"]:
-                fname = f'{day}_{segment}_l2_{driver_group}.p'
-                path = join(root, fname)
+#gmms[f'{day}_{segment}_{driver_group}'] = pickle.load(f)
 
-                if not exists(path):
-                    print(f'{fname} does not exist')
-                    continue
+def sample_gmms(gmms, n_samples=10):
+    samples = {}
+    for key, gmm in gmms.items():
+        print(gmm.n_components)
+        if gmm.n_components==1:
+            #print(gmm.weights_[0])
+            gmm.weights_[0] = 1.
+        X, _ = gmm.sample(n_samples)
+        samples[key] = X
+    #print(samples)
+    return samples
 
-                with open(path, 'rb') as f:
-                    gmms[f'{day}_{segment}_{driver_group}'] = pickle.load(f)
-                    print(f'Loaded {fname}')
+def regroup_samples_by_segment(samples):
+    regrouped = {}
+    for key, data in samples.items():
+        # key formátum: '{day}_{segment}_{driver_group}'
+        parts = key.split('_')
+        day = parts[0]
+        segment = parts[1]
+        driver_group = parts[2]
+        if day=='weekday':
+            seg_key = f'{segment}'
+            if seg_key not in regrouped:
+                regrouped[seg_key] = []
+            regrouped[seg_key].append(data)
 
-    return gmms
+    # Összefűzés
+    for key, data in regrouped.items():
+        print(len(regrouped[key]))
+        print(key)
+        regrouped[key] = np.vstack(regrouped[key])
 
+    return regrouped
 
-def plot_gmm_marginal(gmm: GaussianMixture, dim=0,
-                      title="", xlabel="Value"):
-    """
-    gmm:    egy GaussianMixture objektum
-    dim:    melyik dimenziót rajzoljuk (0 = start time, 1 = energia)
-    """
-
-    # 1) sok minta generálása a keverékmodellből
-    X, _ = gmm.sample(50000)      # 50 000 minta (start time, energy)
-    data = X[:, dim]              # csak az adott dimenzió
-    # ha az időt rajzoljuk (0. dimenzió), váltsuk át órára
-    if dim == 0:
-        data = data / 3600.0  # másodperc -> óra
-
-    # 2) hisztogram – density=True, így kb. sűrűségfüggvény, false akkor darabszám lesz
-    plt.figure(figsize=(6, 4))
-    plt.hist(data, bins=60, density=False, alpha=0.7)
-    plt.xlabel(xlabel)
-    plt.ylabel("Count")
-    plt.title(title)
-    plt.tight_layout()
-    plt.show()
 
 
 def main():
@@ -69,6 +60,11 @@ def main():
                       title=f"{key} – energy",
                       xlabel="Energy [kWh]")
 
+    #sample_gmms(gmms, 50)
+    regroup_samples_by_segment(sample_gmms(gmms, 50))
+
 
 if __name__ == "__main__":
     main()
+
+
