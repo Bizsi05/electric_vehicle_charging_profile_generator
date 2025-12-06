@@ -1,12 +1,22 @@
+import datetime as dt  # ADDED: év/nap lépkedéshez
+import numpy as np     # ADDED: éves profilok összefűzéséhez
 import matplotlib.pyplot as plt
 
 from data_loading import load_gmms
 from plotting import plot_gmm_marginal
+from simulations import simulate_year
+
 from new_samples import (
     sample_gmms,
     regroup_samples_by_segment,
     samples_to_profile,
     convert_sample_to_triple,
+)
+from plotting import (
+    plot_gmm_marginal,
+    plot_segment_profiles_one_day,
+    plot_daily_energy_by_segment,
+    plot_mean_daily_profile_by_segment,
 )
 
 
@@ -31,12 +41,12 @@ def main():
         xlabel="Energy [kWh]",
     )
 
-    # Mintavétel + szegmensenkénti összefésülés
+    # Mintavétel + szegmensenkénti összefésülés (1 napos példa)
     samples = sample_gmms(gmms, n_samples=50)
-    samples_by_segment = regroup_samples_by_segment(samples)
+    samples_by_segment = regroup_samples_by_segment(samples, 'weekday')
 
-    #Minta -> töltési időfüggvény
-    dt_minutes = 60      # órás felbontás
+    # Minta -> töltési időfüggvény (1 nap)
+    dt_minutes = 30      # félórás felbontás
     duration_h = 2.0     # feltételezzük, hogy mindenki 2 órát tölt
 
     profiles = {}
@@ -64,18 +74,18 @@ def main():
     print("  triple (start_idx, duration_steps, level_kw):",
           (ex_start_idx, ex_duration_steps, ex_level_kw))
 
-    # --- Szegmensprofilok kirajzolása ---
-    plt.figure(figsize=(10, 5))
-    for segment, (t_grid, profile) in profiles.items():
-        plt.plot(t_grid, profile, label=segment)
+    plot_segment_profiles_one_day(profiles, title="Weekday – szegmensenkénti töltési profil (1 nap)")
 
-    plt.xlabel("Óra")
-    plt.ylabel("Összteljesítmény [kW]")
-    plt.title("Weekday – szegmensenkénti töltési profil")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+    year = 2021
+    time_index, yearly_profiles = simulate_year(
+        gmms, year=year, n_samples=50, dt_minutes=60, duration_h=2.0
+    )
+
+    plot_daily_energy_by_segment(yearly_profiles, year, dt_minutes=60)
+    plot_mean_daily_profile_by_segment(yearly_profiles, year, dt_minutes=60)
+
+
+
 
 
 if __name__ == "__main__":
