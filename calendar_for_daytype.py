@@ -19,8 +19,8 @@ def easter_sunday(year: int) -> dt.date:
     return dt.date(year, month, day)
 
 
-def hungarian_holidays(year: int) -> set[dt.date]:
-    """Visszaadja az adott év magyar munkaszüneti napjait."""
+def hungarian_holidays(year: int) -> set[dt.date]: # adott év magyar munkaszüneti napjai
+
     easter = easter_sunday(year)
     good_friday   = easter - dt.timedelta(days=2)
     easter_monday = easter + dt.timedelta(days=1)
@@ -42,11 +42,8 @@ def hungarian_holidays(year: int) -> set[dt.date]:
     return holidays
 
 
-def day_type(date: dt.date, holidays: set[dt.date]) -> str:
-    """
-    Visszaadja, hogy az adott nap 'weekday' vagy 'weekend'.
-    Ünnepnapot hétvégének számítjuk.
-    """
+def day_type(date: dt.date, holidays: set[dt.date]) -> str: # adott dátum nap-típusa: 'weekday' vagy 'weekend'
+
     if date in holidays:
         return "weekend"
     # hétfő=0 ... vasárnap=6
