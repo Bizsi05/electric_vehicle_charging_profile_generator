@@ -1,4 +1,4 @@
-from config import N_SAMPLES, DT_MINUTES, DURATION_H
+from config import N_SAMPLES, DT_MINUTES, DURATION_H, CHARGING_POWER_KW
 import numpy as np
 
 def sample_gmms(gmms): #  GMM-enként n_samples darab (start_time[s], energy[kWh]) mintát vesz
@@ -42,13 +42,15 @@ def regroup_samples_by_segment(samples, daytype):
     return regrouped
 
 
-def convert_sample_to_triple(sample): # felbontás és töltési idő a configból (DT_MINUTES, DURATION_H)
+def convert_sample_to_triple(sample):
     """
-    Egy GMM-minta (start_time_sec, energy_kwh) ehhez szükséges adatok -> (start_idx, duration_steps, level_kw, n_steps)
+    Egy GMM-minta (start_time_sec, energy_kwh) -> (start_idx, duration_steps, level_kw, n_steps)
+
     start_idx       : melyik időlépcsőben kezd (index a diszkrét rácson)
     duration_steps  : hány időlépcsőig tart a töltés
-    chgpwr_kw       : konstans töltési teljesítmény (kW)
+    chgpwr_kw       : konstans töltési teljesítmény (kW) – configból (CHARGING_POWER_KW)
     n_steps         : napi időlépcsők száma (24h / dt)
+
     """
     start_sec = sample[0]
     energy_kwh = sample[1]
@@ -56,23 +58,26 @@ def convert_sample_to_triple(sample): # felbontás és töltési idő a configb�
     dt_h = DT_MINUTES / 60.0
     n_steps = int(24 / dt_h)
 
-    # start time 0..24h közé
+    # start time 0..24h közé vágása
     start_sec = np.clip(start_sec, 0, 24 * 3600 - 1)
 
     # hanyadik slot (pl. dt=60 perc -> 0..23)
     start_idx = int(start_sec / (dt_h * 3600))
 
-    # hány slotig tart (pl. 2 óra, dt=1h -> 2)
-    duration_steps = int(DURATION_H / dt_h)
-    duration_steps = max(1, duration_steps)
-
-    # teljesítmény (kW) – energia / idő
-    if DURATION_H <= 0:
+    # ha nincs energia vagy 0 a teljesítmény, tegyük minimális 1 lépés hosszú, 0 kW-al
+    if energy_kwh <= 0 or CHARGING_POWER_KW <= 0:
+        duration_steps = 1
         chgpwr_kw = 0.0
     else:
-        chgpwr_kw = energy_kwh / DURATION_H
+        # időtartam órában
+        duration_h = energy_kwh / CHARGING_POWER_KW
+        # hány dt_h lépés ez?
+        duration_steps = int(np.ceil(duration_h / dt_h))
+        duration_steps = max(1, duration_steps)
+        chgpwr_kw = CHARGING_POWER_KW
 
     return start_idx, duration_steps, chgpwr_kw, n_steps
+
 
 
 def samples_to_profile(segment_samples):
