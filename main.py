@@ -13,6 +13,10 @@ from plotting import (
     plot_segment_profiles_one_day,
     plot_daily_energy_by_segment,
     plot_mean_daily_profile_by_segment,
+    plot_gmm_scatter_2d,
+    plot_samples_scatter_for_segment,
+    plot_total_weekday_weekend,
+
 )
 
 
@@ -38,6 +42,7 @@ def main():
         title=f"{key} – energy",
         xlabel="Energy [kWh]",
     )
+    plot_gmm_scatter_2d(gmm, title=f"{key} – 2D eloszlás")
 
     # 3) 1 napos szimuláció: mintavétel GMM-ekből és szegmensenkénti összefésülés
     samples = sample_gmms(gmms)                         # minden GMM-ből N_SAMPLES minta
@@ -45,6 +50,9 @@ def main():
         samples,
         'weekday'
     )
+
+    plot_samples_scatter_for_segment(samples_by_segment, "home",
+                                     title="Weekday home – minták egy napra")
 
     # 4) 1 napos szegmensprofilok előállítása (idősor: összteljesítmény [kW] 0–24h között)
     profiles = {}              # szegmens -> (t_grid, profile)
@@ -88,6 +96,8 @@ def main():
         yearly_profiles,
         YEAR,
     )
+
+    plot_total_weekday_weekend(time_index, yearly_profiles)
 
 
 if __name__ == "__main__":
