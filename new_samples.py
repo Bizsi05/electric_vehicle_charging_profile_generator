@@ -1,4 +1,4 @@
-from config import N_SAMPLES, DT_MINUTES, DURATION_H, CHARGING_POWER_KW
+from config import N_SAMPLES, DT_MINUTES, CHARGING_POWER_KW,EV_COUNT
 import numpy as np
 
 def sample_gmms(gmms): #  GMM-enként n_samples darab (start_time[s], energy[kWh]) mintát vesz
@@ -120,6 +120,16 @@ def simulate_one_day(gmms, daytype: str, target_mean_kwh: float):
                 # minden szegmens energiáját ugyanazzal a szorzóval skálázza
                 for seg in samples_by_segment:
                     samples_by_segment[seg][:, 1] *= scale
+
+    # 3/b) EV-darabszámra való skálázás (ha kérjük)
+        if EV_COUNT and EV_COUNT > 0:
+            # az adott napra generált összes töltési esemény száma
+            total_sessions = sum(arr.shape[0] for arr in samples_by_segment.values())
+        if total_sessions > 0:
+            factor_ev = EV_COUNT / total_sessions
+            # minden esemény energiáját ugyanazzal a faktorral szorozzuk
+            for seg in samples_by_segment:
+                samples_by_segment[seg][:, 1] *= factor_ev
 
     # 4) minta -> profil
     daily_profiles = {}
