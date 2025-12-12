@@ -28,6 +28,25 @@ def plot_gmm_marginal(gmm: GaussianMixture, dim=0,
     plt.tight_layout()
     plt.show()
 
+
+def plot_gmm_scatter_2d(gmm: GaussianMixture, title="2D GMM minták", n_samples=20000):
+    """
+    2D szórásdiagram a GMM-ből: start time [h] vs. energia [kWh]
+    """
+    X, _ = gmm.sample(n_samples)
+    start_h = X[:, 0] / 3600.0  # másodperc -> óra
+    energy = X[:, 1]
+
+    plt.figure(figsize=(6, 5))
+    plt.scatter(start_h, energy, s=3, alpha=0.2)
+    plt.xlabel("Start time [h]")
+    plt.ylabel("Energy [kWh]")
+    plt.title(title)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_segment_profiles_one_day(profiles,title):
     # --- Szegmensprofilok kirajzolása (1 nap) ---
     plt.figure(figsize=(10, 5))
@@ -41,6 +60,28 @@ def plot_segment_profiles_one_day(profiles,title):
     plt.grid(True)
     plt.tight_layout()
     plt.show()
+
+def plot_samples_scatter_for_segment(samples_by_segment, segment, title=None):
+    """
+    Egy nap szintetikus mintáinak szórásdiagramja egy szegmensre.
+    samples_by_segment: dict[segment] -> ndarray(N,2) [start_sec, energy_kWh]
+    """
+    data = samples_by_segment.get(segment)
+    if data is None or len(data) == 0:
+        return
+
+    start_h = data[:, 0] / 3600.0
+    energy  = data[:, 1]
+
+    plt.figure(figsize=(6, 4))
+    plt.scatter(start_h, energy, s=5, alpha=0.3)
+    plt.xlabel("Start time [h]")
+    plt.ylabel("Energy [kWh]")
+    plt.title(title or f"{segment} – minták egy napra")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
 
 def plot_daily_energy_by_segment (yearly_profiles, year):
 
@@ -121,6 +162,55 @@ def plot_mean_daily_profile_by_segment(yearly_profiles, year):
     plt.xlabel("Óra")
     plt.ylabel("Összteljesítmény [kW]")
     plt.title(f"Átlagos napi profil – szegmensenként (szimulált {year})")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+def plot_total_weekday_weekend(time_index, yearly_profiles):
+    """
+    Összes szegmens összegzett átlagos napi profilja hétköznapra és hétvégére külön.
+    """
+    dt_h = DT_MINUTES / 60.0
+    steps_per_day = int(24 / dt_h)
+
+    # összteljesítmény: szegmensek összege
+    total = None
+    for arr in yearly_profiles.values():
+        total = arr if total is None else total + arr
+
+    total = np.asarray(total)
+    num_days = len(total) // steps_per_day
+    if num_days == 0:
+        return
+
+    weekday_days = []
+    weekend_days = []
+
+    for day in range(num_days):
+        start_idx = day * steps_per_day
+        end_idx   = start_idx + steps_per_day
+        day_profile = total[start_idx:end_idx]
+
+        first_dt = time_index[start_idx]
+        if first_dt.weekday() < 5:   # 0-4 hétköznap
+            weekday_days.append(day_profile)
+        else:                        # 5-6 hétvége
+            weekend_days.append(day_profile)
+
+    t_day = np.arange(steps_per_day) * dt_h
+
+    plt.figure(figsize=(8, 4))
+    if weekday_days:
+        mean_wd = np.vstack(weekday_days).mean(axis=0)
+        plt.plot(t_day, mean_wd, label="Hétköznap")
+    if weekend_days:
+        mean_we = np.vstack(weekend_days).mean(axis=0)
+        plt.plot(t_day, mean_we, label="Hétvége")
+
+    plt.xlabel("Óra")
+    plt.ylabel("Összteljesítmény [kW]")
+    plt.title("Összesített EV-töltési profil – hétköznap vs hétvége")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
