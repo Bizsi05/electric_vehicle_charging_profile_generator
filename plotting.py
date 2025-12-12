@@ -169,7 +169,7 @@ def plot_mean_daily_profile_by_segment(yearly_profiles, year):
 
 def plot_total_weekday_weekend(time_index, yearly_profiles):
     """
-    Összes szegmens összegzett átlagos napi profilja hétköznapra és hétvégére külön.
+    Összes szegmens összegzett átlagos napi profilja hétköznapra és hétvégére
     """
     dt_h = DT_MINUTES / 60.0
     steps_per_day = int(24 / dt_h)
